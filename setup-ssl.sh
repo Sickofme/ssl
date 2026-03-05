@@ -71,6 +71,9 @@ detect_package_manager() {
 
 # --- Сбор данных от пользователя ---
 collect_input() {
+  # Фикс для запуска через curl | bash — переподключаем stdin к терминалу
+  exec < /dev/tty
+
   echo ""
   echo -e "${BOLD}Введите параметры для настройки SSL:${NC}"
   echo "──────────────────────────────────────────────"
@@ -79,10 +82,11 @@ collect_input() {
   while true; do
     read -rp "🌐 Домен (например: example.com): " DOMAIN
     DOMAIN=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]' | xargs)
-    if [[ "$DOMAIN" =~ ^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z]{2,})+$ ]]; then
+    # Простая проверка: есть хотя бы одна точка и нет пробелов
+    if [[ -n "$DOMAIN" && "$DOMAIN" == *.* && "$DOMAIN" != *" "* ]]; then
       break
     else
-      print_warn "Некорректный формат домена. Попробуйте ещё раз."
+      print_warn "Некорректный формат домена. Попробуйте ещё раз (например: example.com)."
     fi
   done
 
@@ -99,7 +103,7 @@ collect_input() {
   # Email для Let's Encrypt
   while true; do
     read -rp "📧 Email для Let's Encrypt (уведомления о продлении): " LE_EMAIL
-    if [[ "$LE_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    if [[ -n "$LE_EMAIL" && "$LE_EMAIL" == *@*.* ]]; then
       break
     else
       print_warn "Некорректный email. Попробуйте ещё раз."
@@ -110,9 +114,9 @@ collect_input() {
   echo ""
   echo -e "${BOLD}Проверьте введённые данные:${NC}"
   echo "──────────────────────────────────────────────"
-  echo -e "  Домен:        ${CYAN}${DOMAIN}${NC}"
+  echo -e "  Домен:           ${CYAN}${DOMAIN}${NC}"
   echo -e "  Порт приложения: ${CYAN}${APP_PORT}${NC}"
-  echo -e "  Email:        ${CYAN}${LE_EMAIL}${NC}"
+  echo -e "  Email:           ${CYAN}${LE_EMAIL}${NC}"
   echo "──────────────────────────────────────────────"
   read -rp "Всё верно? [y/N]: " CONFIRM
   if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
