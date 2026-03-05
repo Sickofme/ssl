@@ -174,7 +174,7 @@ create_temp_nginx_config() {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN};
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
@@ -191,7 +191,7 @@ EOF
     cat > "${NGINX_TEMP}" <<EOF
 server {
     listen 80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN};
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
@@ -219,7 +219,6 @@ obtain_certificate() {
     --agree-tos \
     --no-eff-email \
     -d "${DOMAIN}" \
-    -d "www.${DOMAIN}"
   print_ok "Сертификат получен для ${DOMAIN}"
 }
 
@@ -242,14 +241,14 @@ create_final_nginx_config() {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN};
     return 301 https://\$host\$request_uri;
 }
 
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN};
 
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
