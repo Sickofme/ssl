@@ -218,7 +218,7 @@ obtain_certificate() {
     --email "${LE_EMAIL}" \
     --agree-tos \
     --no-eff-email \
-    -d "${DOMAIN}" \
+    -d "${DOMAIN}"
   print_ok "Сертификат получен для ${DOMAIN}"
 }
 
