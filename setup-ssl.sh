@@ -7,8 +7,16 @@
 
 set -e
 
-# Фикс stdin для запуска через curl | bash
-exec < /dev/tty
+# --- DEBUG: диагностика stdin ---
+echo "[DEBUG] TTY: $(tty 2>&1)"
+echo "[DEBUG] stdin isatty: $([ -t 0 ] && echo YES || echo NO)"
+echo "[DEBUG] /dev/tty: $([ -e /dev/tty ] && echo YES || echo NO)"
+if [ -e /dev/tty ]; then
+  exec < /dev/tty
+  echo "[DEBUG] exec < /dev/tty OK, stdin: $(tty 2>&1)"
+else
+  echo "[DEBUG] /dev/tty недоступен!"
+fi
 
 # --- Цвета для вывода ---
 RED='\033[0;31m'
