@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl.sh -o s
 ```
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl.sh -o setup-ssl-tlc.sh && sudo bash setup-ssl-tlc.sh
+curl -fsSL https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl-tcp.sh -o setup-ssl-tcp.sh && sudo bash setup-ssl-tcp.sh
 ```
 
 Скрипт задаст три вопроса:
