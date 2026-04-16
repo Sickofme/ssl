@@ -53,25 +53,7 @@ check_root() {
 }
 
 # --- Определение пакетного менеджера ---
-detect_package_manager() {
-  if command -v apt-get &>/dev/null; then
-    PKG_MANAGER="apt-get"
-    PKG_UPDATE="apt-get update -y"
-    PKG_INSTALL="apt-get install -y"
-  elif command -v dnf &>/dev/null; then
-    PKG_MANAGER="dnf"
-    PKG_UPDATE="dnf check-update || true"
-    PKG_INSTALL="dnf install -y"
-  elif command -v yum &>/dev/null; then
-    PKG_MANAGER="yum"
-    PKG_UPDATE="yum check-update || true"
-    PKG_INSTALL="yum install -y"
-  else
-    print_error "Неподдерживаемый дистрибутив. Требуется apt, dnf или yum."
-    exit 1
-  fi
-  print_ok "Пакетный менеджер: ${PKG_MANAGER}"
-}
+
 
 # --- Сбор данных от пользователя ---
 collect_input() {
