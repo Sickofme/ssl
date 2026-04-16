@@ -1,22 +1,21 @@
 #!/bin/bash
-
 # ==============================================================
-#  🔐 Nginx + Let's Encrypt SSL Setup Script
-#  Автоматическая выдача SSL сертификата через Certbot + Nginx
+# 🔐 Nginx + Let's Encrypt SSL Setup Script
+# Автоматическая выдача SSL сертификата через Certbot + Nginx
 # ==============================================================
 
 # --- Защита от запуска через пайп (curl | bash) ---
 if [ ! -t 0 ]; then
   SCRIPT_URL="https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl.sh"
   TMPFILE=$(mktemp /tmp/setup-ssl-XXXXXX.sh)
-  echo "⚠  Скрипт запущен через пайп — скачиваю во временный файл..."
+  echo "⚠ Скрипт запущен через пайп — скачиваю во временный файл..."
   if command -v curl &>/dev/null; then
     curl -fsSL "$SCRIPT_URL" -o "$TMPFILE"
   else
     wget -qO "$TMPFILE" "$SCRIPT_URL"
   fi
   chmod +x "$TMPFILE"
-  echo "✓  Запускаю: $TMPFILE"
+  echo "✓ Запускаю: $TMPFILE"
   exec bash "$TMPFILE"
 fi
 
@@ -33,16 +32,15 @@ NC='\033[0m'
 print_banner() {
   echo -e "${CYAN}"
   echo "╔══════════════════════════════════════════════════════╗"
-  echo "║         🔐  Nginx SSL Certificate Setup             ║"
-  echo "║              powered by Let's Encrypt               ║"
+  echo "║       Nginx + Let's Encrypt SSL Setup Script        ║"
   echo "╚══════════════════════════════════════════════════════╝"
   echo -e "${NC}"
 }
 
 print_step() { echo -e "\n${BOLD}${GREEN}▶ $1${NC}"; }
-print_warn()  { echo -e "${YELLOW}⚠  $1${NC}"; }
-print_error() { echo -e "${RED}✗  $1${NC}"; }
-print_ok()    { echo -e "${GREEN}✓  $1${NC}"; }
+print_warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
+print_error() { echo -e "${RED}✗ $1${NC}"; }
+print_ok() { echo -e "${GREEN}✓ $1${NC}"; }
 
 # --- Проверка root ---
 check_root() {
@@ -51,9 +49,6 @@ check_root() {
     exit 1
   fi
 }
-
-# --- Определение пакетного менеджера ---
-
 
 # --- Сбор данных от пользователя ---
 collect_input() {
@@ -67,12 +62,12 @@ collect_input() {
     if [[ -n "$DOMAIN" && "$DOMAIN" == *.* && "$DOMAIN" != *" "* ]]; then
       break
     else
-      print_warn "Некорректный формат домена. Попробуйте ещё раз (например: example.com)."
+      print_warn "Некорректный формат домена. Попробуйте ещё раз."
     fi
   done
 
   while true; do
-    read -rp "🔌 Порт приложения для redirect (например: 3000, 8080): " APP_PORT
+    read -rp "🔌 Порт приложения (например: 3000): " APP_PORT
     if [[ "$APP_PORT" =~ ^[0-9]+$ ]] && [ "$APP_PORT" -ge 1 ] && [ "$APP_PORT" -le 65535 ]; then
       break
     else
@@ -92,9 +87,9 @@ collect_input() {
   echo ""
   echo -e "${BOLD}Проверьте введённые данные:${NC}"
   echo "──────────────────────────────────────────────"
-  echo -e "  Домен:           ${CYAN}${DOMAIN}${NC}"
-  echo -e "  Порт приложения: ${CYAN}${APP_PORT}${NC}"
-  echo -e "  Email:           ${CYAN}${LE_EMAIL}${NC}"
+  echo -e " Домен: ${CYAN}${DOMAIN}${NC}"
+  echo -e " Порт приложения: ${CYAN}${APP_PORT}${NC}"
+  echo -e " Email: ${CYAN}${LE_EMAIL}${NC}"
   echo "──────────────────────────────────────────────"
   read -rp "Всё верно? [y/N]: " CONFIRM
   if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
@@ -103,26 +98,24 @@ collect_input() {
   fi
 }
 
-# --- Установка зависимостей ---
+# --- Установка зависимостей (упрощённая) ---
 install_dependencies() {
-  print_step "Обновление пакетов и установка зависимостей..."
-  $PKG_UPDATE
+  print_step "Проверка зависимостей..."
 
   if ! command -v nginx &>/dev/null; then
-    $PKG_INSTALL nginx
-    print_ok "Nginx установлен"
+    print_error "Nginx не найден. Установите его вручную командой:"
+    echo "   apt install nginx    или    dnf install nginx    или    yum install nginx"
+    exit 1
   else
     print_ok "Nginx уже установлен"
   fi
 
   if ! command -v certbot &>/dev/null; then
-    if [[ "$PKG_MANAGER" == "apt-get" ]]; then
-      $PKG_INSTALL certbot python3-certbot-nginx
-    else
-      $PKG_INSTALL epel-release
-      $PKG_INSTALL certbot python3-certbot-nginx
-    fi
-    print_ok "Certbot установлен"
+    print_error "Certbot не найден. Установите его вручную:"
+    echo "   apt install certbot python3-certbot-nginx"
+    echo "   или"
+    echo "   dnf install certbot python3-certbot-nginx"
+    exit 1
   else
     print_ok "Certbot уже установлен"
   fi
@@ -134,61 +127,46 @@ configure_firewall() {
   if command -v ufw &>/dev/null; then
     ufw allow 'Nginx Full' &>/dev/null || true
     ufw allow 22/tcp &>/dev/null || true
-    print_ok "UFW: открыты порты 80, 443, 22"
+    print_ok "UFW: порты 80, 443 и 22 открыты"
   elif command -v firewall-cmd &>/dev/null; then
     firewall-cmd --permanent --add-service=http &>/dev/null || true
     firewall-cmd --permanent --add-service=https &>/dev/null || true
     firewall-cmd --reload &>/dev/null || true
-    print_ok "firewalld: открыты порты 80, 443"
+    print_ok "firewalld: порты 80 и 443 открыты"
   else
-    print_warn "Файрвол не обнаружен. Убедитесь, что порты 80 и 443 открыты."
+    print_warn "Файрвол не обнаружен. Убедитесь, что порты 80 и 443 открыты вручную."
   fi
 }
 
-# --- Временный Nginx конфиг для certbot challenge ---
+# --- Временный Nginx конфиг для certbot ---
 create_temp_nginx_config() {
   print_step "Создание временного Nginx конфига для получения сертификата..."
+
   mkdir -p /var/www/certbot
 
-  if [[ "$PKG_MANAGER" == "apt-get" ]]; then
-    NGINX_TEMP="/etc/nginx/sites-available/${DOMAIN}_temp"
-    cat > "${NGINX_TEMP}" <<EOF
+  # Универсальный временный конфиг (работает и для Debian, и для RHEL)
+  cat > /etc/nginx/conf.d/${DOMAIN}_temp.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN};
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    location / {
-        return 200 'SSL setup in progress...';
-        add_header Content-Type text/plain;
-    }
-}
-EOF
-    rm -f /etc/nginx/sites-enabled/default
-    ln -sf "${NGINX_TEMP}" "/etc/nginx/sites-enabled/${DOMAIN}_temp"
-  else
-    NGINX_TEMP="/etc/nginx/conf.d/${DOMAIN}_temp.conf"
-    cat > "${NGINX_TEMP}" <<EOF
-server {
-    listen 80;
-    server_name ${DOMAIN};
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    location / {
-        return 200 'SSL setup in progress...';
-        add_header Content-Type text/plain;
-    }
-}
-EOF
-  fi
 
-  nginx -t
-  systemctl enable nginx
-  systemctl restart nginx
-  print_ok "Nginx запущен с временным конфигом"
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 200 'SSL setup in progress...';
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+
+  # Удаляем default, если он мешает
+  rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+  nginx -t && systemctl restart nginx
+  print_ok "Временный конфиг применён"
 }
 
 # --- Получение сертификата ---
@@ -200,26 +178,19 @@ obtain_certificate() {
     --email "${LE_EMAIL}" \
     --agree-tos \
     --no-eff-email \
-    -d "${DOMAIN}"
-  print_ok "Сертификат получен для ${DOMAIN}"
+    -d "${DOMAIN}" \
+    --non-interactive
+
+  print_ok "Сертификат успешно получен для ${DOMAIN}"
 }
 
 # --- Финальный Nginx конфиг ---
 create_final_nginx_config() {
   print_step "Создание финального Nginx конфига..."
 
-  if [[ "$PKG_MANAGER" == "apt-get" ]]; then
-    rm -f "/etc/nginx/sites-enabled/${DOMAIN}_temp"
-    rm -f "/etc/nginx/sites-available/${DOMAIN}_temp"
-    NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}"
-    NGINX_LINK="/etc/nginx/sites-enabled/${DOMAIN}"
-  else
-    rm -f "/etc/nginx/conf.d/${DOMAIN}_temp.conf"
-    NGINX_CONF="/etc/nginx/conf.d/${DOMAIN}.conf"
-    NGINX_LINK=""
-  fi
+  rm -f /etc/nginx/conf.d/${DOMAIN}_temp.conf
 
-  cat > "${NGINX_CONF}" <<EOF
+  cat > /etc/nginx/conf.d/${DOMAIN}.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
@@ -228,76 +199,83 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name ${DOMAIN};
 
-    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache   shared:SSL:10m;
-    ssl_session_timeout 1d;
 
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers on;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 1.1.1.1 8.8.8.8 valid=300s;
+    resolver_timeout 5s;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
 
     location / {
-        proxy_pass         http://127.0.0.1:${APP_PORT};
+        proxy_pass http://127.0.0.1:${APP_PORT};
         proxy_http_version 1.1;
-        proxy_set_header   Upgrade \$http_upgrade;
-        proxy_set_header   Connection 'upgrade';
-        proxy_set_header   Host \$host;
-        proxy_set_header   X-Real-IP \$remote_addr;
-        proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
         proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 300;
+        proxy_send_timeout 300;
     }
 }
 EOF
 
-  [[ -n "$NGINX_LINK" ]] && ln -sf "${NGINX_CONF}" "${NGINX_LINK}"
-  print_ok "Финальный конфиг создан"
+  print_ok "Финальный конфиг Nginx создан"
 }
 
-# --- Автообновление ---
+# --- Автообновление сертификатов ---
 setup_auto_renew() {
   print_step "Настройка автоматического обновления сертификата..."
-  echo "0 3 * * * root certbot renew --quiet --deploy-hook 'systemctl reload nginx'" \
-    > /etc/cron.d/certbot-renew
+  cat > /etc/cron.d/certbot-renew <<EOF
+0 3 * * * root certbot renew --quiet --deploy-hook 'systemctl reload nginx'
+EOF
   chmod 644 /etc/cron.d/certbot-renew
-  print_ok "Автообновление настроено (каждый день в 03:00)"
+  print_ok "Автообновление настроено (ежедневно в 03:00)"
 }
 
 # --- Финальный перезапуск ---
 final_restart() {
   print_step "Финальная проверка и перезапуск Nginx..."
-  nginx -t
-  systemctl reload nginx
+  nginx -t && systemctl reload nginx
 
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║           ✅  Установка завершена успешно!           ║${NC}"
+  echo -e "${GREEN}║          ✅ Установка завершена успешно!            ║${NC}"
   echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
   echo ""
-  echo -e "  🌐 Сайт:      ${CYAN}https://${DOMAIN}${NC}"
-  echo -e "  🔁 Порт:      ${CYAN}${APP_PORT}${NC}"
-  echo -e "  📧 Email:     ${CYAN}${LE_EMAIL}${NC}"
-  echo -e "  🔄 Обновление: каждый день в 03:00"
+  echo -e " 🌐 Сайт: ${CYAN}https://${DOMAIN}${NC}"
+  echo -e " 🔌 Порт приложения: ${CYAN}${APP_PORT}${NC}"
+  echo -e " 📧 Email: ${CYAN}${LE_EMAIL}${NC}"
   echo ""
-  echo -e "  Проверить сертификат: ${YELLOW}certbot certificates${NC}"
-  echo -e "  Логи Nginx:           ${YELLOW}journalctl -u nginx -f${NC}"
-  echo ""
+  echo -e " Проверить сертификат: ${YELLOW}certbot certificates${NC}"
+  echo -e " Логи Nginx: ${YELLOW}journalctl -u nginx -f${NC}"
 }
 
 # ==============================================================
-#  MAIN
+# MAIN
 # ==============================================================
 print_banner
 check_root
-detect_package_manager
 collect_input
 install_dependencies
 configure_firewall
