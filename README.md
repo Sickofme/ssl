@@ -24,13 +24,7 @@ Bash-скрипт для автоматической настройки Nginx �
 curl -fsSL https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl.sh -o setup-ssl.sh && sudo bash setup-ssl.sh
 ```
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl-tcp.sh -o setup-ssl-tcp.sh && sudo bash setup-ssl-tcp.sh
-```
-
-`setup-ssl-tcp.sh` — вариант, когда публичный 443 занят другим сервисом (xray/Reality, haproxy и т.п.): nginx слушает TLS только на `127.0.0.1:<порт>` (по умолчанию 8443), опционально с PROXY protocol, и умеет проксировать на приложение или отдавать статику.
-
-`setup-ssl.sh` задаст вопросы:
+Скрипт задаст вопросы:
 
 | Параметр | Пример | Описание |
 |---|---|---|
@@ -42,12 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/sickofme/ssl/main/setup-ssl-tcp.sh 
 ## 📁 Что создаётся
 
 ```
-setup-ssl.sh:
 /etc/nginx/conf.d/<домен>.conf                      — конфиг Nginx
-setup-ssl-tcp.sh:
-/etc/nginx/sites-available/<домен>_loopback_tls     — Debian/Ubuntu
-/etc/nginx/conf.d/<домен>_loopback_tls.conf         — CentOS/RHEL
-общее:
 /etc/nginx/conf.d/00-ssl-setup-websocket-map.conf   — map для WebSocket
 /etc/letsencrypt/live/<домен>/                      — SSL сертификат
 /var/www/certbot/                                   — директория для ACME challenge
